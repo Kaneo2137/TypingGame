@@ -18,5 +18,15 @@ namespace Clicker
             Console.Write(new string(' ', Console.BufferWidth - 1)); // Preventing buffer overflow
             Console.SetCursorPosition(0, Console.CursorTop);
         }
+
+        public static void DelOneCharacter()
+        {
+            if(Console.CursorLeft == 0)
+                return;
+            
+            Console.SetCursorPosition(Console.CursorLeft - 1, Console.CursorTop);
+            Console.Write(' ');
+            Console.SetCursorPosition(Console.CursorLeft - 1, Console.CursorTop);
+        }
     }
 }

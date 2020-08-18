@@ -1,31 +1,97 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Collections.Generic;
 
 namespace Clicker
 {
     static class Game
     {
-        static int score = 0;
-        static string[] wordlist;
-        static Random rnd;
+        static private Player player;
+        static private int score;
+        static private string[] wordlist;
+        static private Random rnd;
 
         static Game()
         {
-            wordlist = File.ReadAllLines("wordlist.txt").ToArray();
+            wordlist = GetTextFromAssembly(); //File.ReadAllLines("wordlist.txt").ToArray();
             rnd = new Random();
+        }
+
+        static string[] GetTextFromAssembly()
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            var resourceName = "Clicker.wordlist.txt";
+            List<string> lines = new List<string>();
+
+            using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+            using (StreamReader reader = new StreamReader(stream))
+            {
+                while(!reader.EndOfStream)
+                {
+                    lines.Add(reader.ReadLine());
+                }
+            }
+
+            return lines.ToArray();
         }
 
         public static void NewGame()
         {
+            player = new Player();
 
+            Console.WriteLine("What's your nick?");
+            Console.Write("> ");
+
+            player.Name = Console.ReadLine();
+
+            Console.Clear();
+
+            var askLayout = new Menu();
+            askLayout.Title = "What's your layout?";
+
+            askLayout.OnExit = () => { }; // To implement
+
+            foreach (var layout in (Player.KeyboardLayout[])Enum.GetValues(typeof(Player.KeyboardLayout)))
+            {
+                askLayout.AddEntry(layout.ToString(), () => { player.Layout = layout; askLayout.Repeat = false; });
+            }
+
+            askLayout.ShowMenu();
         }
 
         public static void LoadGame()
         {
-            Menu selectSave = new Menu("Select game save:");
+            if (!Directory.Exists("save"))
+                Directory.CreateDirectory("save");
 
-            //foreach()
+            if (!File.Exists("save/save.sav"))
+                File.Create("save/save.sav");
+
+            var rawSaves = File.ReadAllLines("save/save.sav");
+
+            if (rawSaves.Length > 0)
+            {
+                if (rawSaves[0].Split('^').Length < 3)
+                {
+                    File.WriteAllLines($"save/corrupted_save_{DateTime.Now}.dat", rawSaves);
+                    File.Create("save/save.dat");
+                    PopulateSave();
+                }
+                else
+                {
+                    // Some stuff
+                }
+            }
+            else
+                PopulateSave();
+
+        }
+
+        private static void PopulateSave()
+        {
+
         }
 
         public static void StartGame()
@@ -45,37 +111,28 @@ namespace Clicker
                 ExtendedConsole.WriteLine(" Score: " + score, ConsoleColor.Blue);
                 Console.WriteLine();
 
-                Console.ResetColor();
-
                 Console.WriteLine($"{word} {secondWord} {thirdWord}");
                 Console.WriteLine();
 
                 do
                 {
-                    var key = Console.ReadKey(false);
+                    var key = Console.ReadKey(true);
 
                     if (key.Key == ConsoleKey.Escape)
                         return;
 
-                    Console.SetCursorPosition(0, Console.CursorTop);
-
-                    if (key.Key == ConsoleKey.Backspace)
+                    if (key.Key == ConsoleKey.Backspace && !string.IsNullOrEmpty(input))
                     {
-                        if (input != string.Empty || input != "")
-                        {
-                            input = new string(input.ToArray().SkipLast(1).ToArray());
-                            ColorErrors(word, input, ref errors);
-                        }
+                        input = new String(input.SkipLast(1).ToArray());
+                        ExtendedConsole.DelOneCharacter();
+                        ColorErrors(word, input, ref errors);
                     }
                     else
                     {
                         input += key.KeyChar;
                         ColorErrors(word, input, ref errors);
+                        Console.Write(input.Last());
                     }
-
-                    ExtendedConsole.ClearLine();
-
-                    Console.Write(input);
 
                 } while (input != word);
 
